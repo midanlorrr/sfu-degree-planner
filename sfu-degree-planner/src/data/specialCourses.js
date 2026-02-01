@@ -2,7 +2,7 @@ export const SPECIAL_COURSES = {
   "COOP": {
     id: "COOP",
     name: "Co-op Work Term",
-    credits: 0,
+    credits: 3,
     prereqs: [],
     minCredits: 0,
     offerings: [],

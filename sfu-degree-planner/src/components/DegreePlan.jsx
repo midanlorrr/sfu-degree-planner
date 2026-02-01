@@ -142,7 +142,7 @@ function DraggableCourse({ courseId, course, isOverridden, onOverride, isFailed,
   );
 }
 
-function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop, overrides, onOverride, failedCourses, onMarkAsFailed }) {
+function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop, overrides, onOverride, failedCourses, onMarkAsFailed, totalCredits }) {
   const [isOver, setIsOver] = useState(false);
 
   return (
@@ -194,11 +194,35 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
           />
         );
       })}
+      <div style={{ 
+        marginTop: '16px', 
+        paddingTop: '12px', 
+        borderTop: '2px solid rgba(102, 126, 234, 0.2)',
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#667eea'
+      }}>
+        Total: {totalCredits} credits
+      </div>
     </div>
   );
 }
 
 export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousSemester, onAddNextSemester, overrides, onOverride, failedCourses, onMarkAsFailed }) {
+  function getCreditsUpToSemester(targetSemester) {
+    let total = 0;
+    for (const semester of semesters) {
+      const courseIds = plan[semester] || [];
+      courseIds.forEach(id => {
+        // Remove any suffix like -1, -2 to find the base course
+        const baseId = id.replace(/-\d+$/, '');
+        const course = courses.find(c => c.id === baseId);
+        if (course) total += course.credits;
+      });
+      if (semester === targetSemester) break;
+    }
+    return total;
+  }
   const semesters = Object.keys(plan).sort((a, b) => {
     const [yearA, termA] = a.split('-');
     const [yearB, termB] = b.split('-');
@@ -287,6 +311,7 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
             onOverride={onOverride}
             failedCourses={failedCourses}
             onMarkAsFailed={handleMarkAsFailedLocal}
+            totalCredits={getCreditsUpToSemester(semesterKey)}
           />
         );
       })}
