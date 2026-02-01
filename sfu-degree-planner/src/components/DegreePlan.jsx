@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 function getBaseCourseId(courseId) {
-  return courseId.replace(/-\d+$/, "");
+  return courseId.replace(/-retake$/, "").replace(/-\d+$/, "");
 }
 
 function CourseBlock({ course, courseId, isDragging, isOverridden, onOverride, isFailed, isRetake, onMarkAsFailed, semesterKey }) {
