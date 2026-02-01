@@ -120,8 +120,23 @@ export default function App() {
   }
 
   return (
-    <div style={{ color: 'black' }}>
-      <h1>MSE Degree Planner</h1>
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      <div style={{ 
+        padding: '30px 40px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+      }}>
+        <h1 style={{ margin: 0, fontSize: '32px', fontWeight: '600' }}>MSE Degree Planner</h1>
+        <p style={{ margin: '8px 0 0 0', opacity: 0.9, fontSize: '14px' }}>
+          Drag courses to rearrange your schedule
+        </p>
+      </div>
       
       {courses.length > 0 ? (
         <>
@@ -135,27 +150,33 @@ export default function App() {
           
           {notifications.length > 0 && (
             <div style={{ 
-              margin: '20px', 
-              padding: '15px', 
-              background: '#f5f5f5', 
-              border: '1px solid #ddd',
-              borderRadius: '4px',
+              margin: '20px 40px', 
+              padding: '20px', 
+              background: 'white',
+              color: 'black',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
               maxHeight: '200px',
               overflowY: 'auto'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>Move Log:</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <strong style={{ fontSize: '16px' }}>Move Log</strong>
                 <button onClick={() => setNotifications([])} style={{ 
-                  padding: '4px 8px', 
+                  padding: '6px 12px', 
                   fontSize: '12px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px'
                 }}>Clear</button>
               </div>
               {notifications.map((msg, idx) => (
                 <div key={idx} style={{ 
-                  padding: '4px 0', 
-                  fontSize: '14px',
-                  fontFamily: 'monospace'
+                  padding: '6px 0', 
+                  fontSize: '13px',
+                  fontFamily: 'monospace',
+                  borderBottom: idx < notifications.length - 1 ? '1px solid #f0f0f0' : 'none'
                 }}>
                   {msg}
                 </div>
@@ -164,7 +185,9 @@ export default function App() {
           )}
         </>
       ) : (
-        <p>Loading courses...</p>
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <p style={{ fontSize: '16px' }}>Loading courses...</p>
+        </div>
       )}
     </div>
   );

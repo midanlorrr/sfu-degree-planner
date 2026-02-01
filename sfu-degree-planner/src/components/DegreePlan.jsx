@@ -9,8 +9,8 @@ function CourseBlock({ course, isDragging }) {
   const getBackgroundColor = () => {
     if (course.type === 'coop') return '#e3f2fd';
     if (course.type === 'elective') return '#fff3e0';
-    if (course.type === 'technical-elective') return '#f3e5f5';
-    return '#f0f0f0';
+    if (course.type === 'technical-elective') return '#ead3ee';
+    return '#ecdee8';
   };
 
   return (
@@ -18,14 +18,16 @@ function CourseBlock({ course, isDragging }) {
       padding: '10px', 
       margin: '8px 0', 
       background: getBackgroundColor(),
-      borderRadius: '4px',
+      borderRadius: '8px',
       cursor: 'grab',
-      opacity: isDragging ? 0.5 : 1
+      opacity: isDragging ? 0.5 : 1,
+      color: '#333',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     }}>
-      <strong>{course.id}</strong>
-      <div style={{ fontSize: '12px' }}>{course.name}</div>
+      <strong style={{ color: '#333' }}>{course.id}</strong>
+      <div style={{ fontSize: '12px', color: '#666' }}>{course.name}</div>
       {course.credits > 0 && (
-        <div style={{ fontSize: '11px', color: '#666' }}>{course.credits} credits</div>
+        <div style={{ fontSize: '11px', color: '#999' }}>{course.credits} credits</div>
       )}
     </div>
   );
@@ -66,14 +68,19 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
         onDrop(courseId, semesterKey);
       }}
       style={{ 
-        border: isOver ? '2px solid #2196f3' : '1px solid #ccc',
-        padding: '15px', 
-        minWidth: '250px',
-        minHeight: '400px',
-        background: isOver ? '#f5f5f5' : 'white'
+        border: isOver ? '2px solid #667eea' : '1px solid rgba(255,255,255,0.3)',
+        padding: '20px', 
+        minWidth: '280px',
+        width: '280px',
+        minHeight: '450px',
+        background: isOver ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.9)',
+        borderRadius: '12px',
+        flex: '0 0 auto',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        backdropFilter: 'blur(10px)'
       }}
     >
-      <h3>{term} {year}</h3>
+      <h3 style={{ margin: '0 0 16px 0', color: '#667eea', fontSize: '18px', fontWeight: '600' }}>{term} {year}</h3>
       {courseIds.map((courseId, idx) => {
         const course = courses.find(c => c.id === getBaseCourseId(courseId));
         if (!course) return null;
@@ -135,17 +142,22 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
       <button 
         onClick={onAddPreviousSemester}
         style={{
-          padding: '10px 15px',
-          background: '#2196f3',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '14px',
-          minWidth: '150px',
-          height: 'fit-content',
-          marginTop: '45px'
-        }}
+        padding: '12px 16px',
+        background: 'white',
+        color: '#667eea',
+        border: '2px solid rgba(255,255,255,0.3)',
+        borderRadius: '10px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: '600',
+        minWidth: '180px',
+        height: 'fit-content',
+        marginTop: '45px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        transition: 'transform 0.2s'
+      }}
+      onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+      onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
       >
         + Add Previous Semester
       </button>
@@ -168,17 +180,22 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
       <button 
         onClick={onAddNextSemester}
         style={{
-          padding: '10px 15px',
-          background: '#2196f3',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
+          padding: '12px 16px',
+          background: 'white',
+          color: '#667eea',
+          border: '2px solid rgba(255,255,255,0.3)',
+          borderRadius: '10px',
           cursor: 'pointer',
           fontSize: '14px',
-          minWidth: '150px',
+          fontWeight: '600',
+          minWidth: '180px',
           height: 'fit-content',
-          marginTop: '45px'
+          marginTop: '45px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          transition: 'transform 0.2s'
         }}
+        onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+        onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
       >
         + Add Next Semester
       </button>
