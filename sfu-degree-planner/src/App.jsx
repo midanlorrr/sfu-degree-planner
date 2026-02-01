@@ -11,7 +11,7 @@ export default function App() {
       // Test the parser on every course
       data.forEach((course) => {
         const id = `${course.dept} ${course.number}`;
-        const parsed = parsePrereqs(course.prerequisites);
+        const parsed = parsePrereqs(course.prerequisites, id);
         console.log(`${id}: ${JSON.stringify(parsed)}`);
       });
     });
