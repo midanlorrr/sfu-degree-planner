@@ -86,7 +86,7 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
   );
 }
 
-export default function DegreePlan({ plan, courses, onCourseMove }) {
+export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousSemester }) {
   const semesters = Object.keys(plan).sort((a, b) => {
     const [yearA, termA] = a.split('-');
     const [yearB, termB] = b.split('-');
@@ -115,7 +115,24 @@ export default function DegreePlan({ plan, courses, onCourseMove }) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: '20px', padding: '20px', overflowX: 'auto' }}>
+    <div style={{ display: 'flex', gap: '20px', padding: '20px', overflowX: 'auto', alignItems: 'flex-start' }}>
+      <button 
+        onClick={onAddPreviousSemester}
+        style={{
+          padding: '10px 15px',
+          background: '#2196f3',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          minWidth: '150px',
+          height: 'fit-content',
+          marginTop: '45px'
+        }}
+      >
+        + Add Previous Semester
+      </button>
       {semesters.map(semesterKey => {
         const [year, term] = semesterKey.split('-');
         const courseIds = plan[semesterKey];
