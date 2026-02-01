@@ -1,6 +1,18 @@
 export default function DegreePlan({ plan, courses }) {
-  const semesters = Object.keys(plan).sort(); // Sort chronologically
-  
+  const semesters = Object.keys(plan).sort((a, b) => {
+    const [yearA, termA] = a.split('-');
+    const [yearB, termB] = b.split('-');
+    
+    // Compare years first
+    if (yearA !== yearB) {
+      return yearA.localeCompare(yearB);
+    }
+    
+    // If same year, compare terms
+    const termOrder = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
+    return termOrder[termA] - termOrder[termB];
+  });
+
   return (
     <div style={{ display: 'flex', gap: '20px', padding: '20px' }}>
       {semesters.map(semesterKey => {
@@ -16,7 +28,7 @@ export default function DegreePlan({ plan, courses }) {
                 <div key={courseId} style={{ 
                   padding: '10px', 
                   margin: '8px 0', 
-                  background: '#f0f0f0',
+                  background: '#000000',
                   borderRadius: '4px'
                 }}>
                   <strong>{courseId}</strong>

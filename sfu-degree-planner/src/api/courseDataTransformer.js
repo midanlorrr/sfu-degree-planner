@@ -1,7 +1,8 @@
 import { parsePrereqs } from './parsePrereqs.js';
+import { SPECIAL_COURSES } from '../data/specialCourses.js';
 
 export function transformCourseData(apiCourses) {
-  return apiCourses.map(course => {
+  const transformedCourses = apiCourses.map(course => {
     const courseId = `${course.dept} ${course.number}`;
     
     return {
@@ -9,9 +10,22 @@ export function transformCourseData(apiCourses) {
       name: course.title,
       credits: parseInt(course.units, 10),
       prereqs: parsePrereqs(course.prerequisites, courseId),
-      offerings: extractOfferings(course.offerings)
+      minCredits: parseMinCredits(course.prerequisites),
+      offerings: extractOfferings(course.offerings),
+      offeringPattern: extractOfferingPattern(course.offerings)
     };
   });
+  
+  // Add special courses (COOP, CMPL, MSE 4XX)
+  return [...transformedCourses, ...Object.values(SPECIAL_COURSES)];
+}
+
+function parseMinCredits(prereqString) {
+  if (!prereqString) return 0;
+  
+  // Match patterns like "100 units" or "60 units"
+  const match = prereqString.match(/(\d+)\s*units/i);
+  return match ? parseInt(match[1], 10) : 0;
 }
 
 function extractOfferings(offeringsArray) {
@@ -31,4 +45,19 @@ function extractOfferings(offeringsArray) {
     
     return `${seasonCode}${year}`;
   });
+}
+
+function extractOfferingPattern(offeringsArray) {
+  if (!offeringsArray || offeringsArray.length === 0) return [];
+  
+  // Extract unique seasons from all offerings
+  const seasons = new Set();
+  
+  offeringsArray.forEach(offering => {
+    const term = offering.term;
+    const season = term.split(' ')[0];
+    seasons.add(season);
+  });
+  
+  return Array.from(seasons);
 }
