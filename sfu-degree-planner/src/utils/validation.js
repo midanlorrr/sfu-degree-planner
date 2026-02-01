@@ -13,6 +13,12 @@ function getSemestersInOrder(plan) {
   return Object.keys(plan).sort((a, b) => semesterToNumber(a) - semesterToNumber(b));
 }
 
+// Check if a semester is a COOP semester
+function isCoopSemester(semesterKey, plan) {
+  const courses = plan[semesterKey] || [];
+  return courses.includes('COOP');
+}
+
 // Calculate total credits earned before a given semester
 function getCreditsBeforeSemester(semesterKey, plan, courses) {
   const targetNum = semesterToNumber(semesterKey);
@@ -95,58 +101,156 @@ function findDependentCourses(courseId, courses) {
   return dependents;
 }
 
+function extendPlanIfNeeded(plan, untilSemester) {
+  const semesters = getSemestersInOrder(plan);
+  const lastSemester = semesters[semesters.length - 1];
+  const [lastYear, lastTerm] = lastSemester.split('-');
+  
+  const extendedPlan = { ...plan };
+  let currentYear = parseInt(lastYear);
+  let currentTerm = lastTerm;
+  
+  // Keep adding semesters until we reach or pass the target
+  while (semesterToNumber(`${currentYear}-${currentTerm}`) < semesterToNumber(untilSemester)) {
+    // Advance to next semester
+    if (currentTerm === 'Spring') currentTerm = 'Summer';
+    else if (currentTerm === 'Summer') currentTerm = 'Fall';
+    else if (currentTerm === 'Fall') {
+      currentTerm = 'Spring';
+      currentYear++;
+    }
+    
+    const newSemesterKey = `${currentYear}-${currentTerm}`;
+    if (!extendedPlan[newSemesterKey]) {
+      extendedPlan[newSemesterKey] = [];
+    }
+  }
+  
+  return extendedPlan;
+}
+
 // Find the next valid semester for a course after a given semester
 function findNextValidSemester(courseId, afterSemester, plan, courses) {
-  const semestersInOrder = getSemestersInOrder(plan);
+  const [afterYear] = afterSemester.split('-');
+  const extendedPlan = extendPlanIfNeeded(plan, `${parseInt(afterYear) + 3}-Fall`);
+  
+  const semestersInOrder = getSemestersInOrder(extendedPlan);
   const afterNum = semesterToNumber(afterSemester);
+  
+  console.log(`\n🔍 Finding semester for ${courseId} after ${afterSemester}`);
+  
+  const course = courses.find(c => c.id === courseId);
+  console.log(`   Prereqs: ${JSON.stringify(course.prereqs)}`);
+  console.log(`   Offering pattern: ${JSON.stringify(course.offeringPattern)}`);
   
   for (const semester of semestersInOrder) {
     if (semesterToNumber(semester) <= afterNum) continue;
     
-    if (
-      isOfferedInSemester(courseId, semester, courses) &&
-      arePrereqsSatisfied(courseId, semester, plan, courses) &&
-      hasEnoughCredits(courseId, semester, plan, courses)
-    ) {
+    if (isCoopSemester(semester, extendedPlan)) {
+      console.log(`   ❌ ${semester} - COOP semester`);
+      continue;
+    }
+    
+    const offered = isOfferedInSemester(courseId, semester, courses);
+    const prereqsOk = arePrereqsSatisfied(courseId, semester, extendedPlan, courses);
+    const creditsOk = hasEnoughCredits(courseId, semester, extendedPlan, courses);
+    
+    console.log(`   Checking ${semester}: offered=${offered}, prereqs=${prereqsOk}, credits=${creditsOk}`);
+    
+    if (offered && prereqsOk && creditsOk) {
+      console.log(`   ✅ Found valid semester: ${semester}`);
       return semester;
     }
   }
   
-  return null; // No valid semester found
+  console.log(`   ❌ No valid semester found`);
+  return null;
 }
 
-// Main validation and cascade function
-export function validateAndCascade(courseId, sourceSemester, targetSemester, currentPlan, courses) {
-  // Don't process if source and target are the same
+// utils/validation.js - complete validateAndCascade function
+
+export function validateAndCascade(courseId, sourceSemester, targetSemester, currentPlan, courses, logs = []) {
   if (sourceSemester === targetSemester) {
-    return currentPlan;
+    return { plan: currentPlan, logs };
   }
   
-  // Check if the move itself is valid
+  // Extend plan to have room for cascades
+  let workingPlan = extendPlanIfNeeded(currentPlan, `${new Date().getFullYear() + 10}-Fall`);
+  
+  // Special handling for COOP moves
+  if (courseId === 'COOP') {
+    logs.push(`✅ Moving COOP from ${sourceSemester} to ${targetSemester}`);
+    
+    workingPlan[sourceSemester] = workingPlan[sourceSemester].filter(id => id !== 'COOP');
+    const displacedCourses = workingPlan[targetSemester].filter(id => id !== 'COOP');
+    workingPlan[targetSemester] = ['COOP'];
+    
+    for (const displacedId of displacedCourses) {
+      logs.push(`⚠️ ${displacedId} displaced by COOP in ${targetSemester}`);
+      
+      const newSemester = findNextValidSemester(displacedId, targetSemester, workingPlan, courses);
+      
+      if (!newSemester) {
+        logs.push(`❌ Cannot find valid semester for displaced ${displacedId}`);
+        return { plan: null, logs };
+      }
+      
+      workingPlan[newSemester] = [...workingPlan[newSemester], displacedId];
+      logs.push(`✅ Moved ${displacedId} to ${newSemester}`);
+      
+      const dependents = findDependentCourses(displacedId, courses);
+      for (const depId of dependents) {
+        let depCurrentSemester = null;
+        for (const [semester, courseIds] of Object.entries(workingPlan)) {
+          if (courseIds.includes(depId)) {
+            depCurrentSemester = semester;
+            break;
+          }
+        }
+        
+        if (depCurrentSemester && !arePrereqsSatisfied(depId, depCurrentSemester, workingPlan, courses)) {
+          const depNewSemester = findNextValidSemester(depId, newSemester, workingPlan, courses);
+          if (!depNewSemester) {
+            logs.push(`❌ Cannot cascade ${depId}`);
+            return { plan: null, logs };
+          }
+          
+          workingPlan[depCurrentSemester] = workingPlan[depCurrentSemester].filter(id => id !== depId);
+          workingPlan[depNewSemester] = [...workingPlan[depNewSemester], depId];
+          logs.push(`✅ Cascaded ${depId} from ${depCurrentSemester} to ${depNewSemester}`);
+        }
+      }
+    }
+    
+    return { plan: workingPlan, logs };
+  }
+  
+  // Regular course move
+  if (isCoopSemester(targetSemester, workingPlan)) {
+    logs.push(`❌ Cannot move ${courseId} to ${targetSemester} - it's a COOP semester`);
+    return { plan: null, logs };
+  }
+  
   if (!isOfferedInSemester(courseId, targetSemester, courses)) {
-    console.log(`❌ ${courseId} is not offered in ${targetSemester}`);
-    return null;
+    logs.push(`❌ ${courseId} is not offered in ${targetSemester}`);
+    return { plan: null, logs };
   }
   
-  // Create a temporary plan with the move
-  const tempPlan = { ...currentPlan };
-  tempPlan[sourceSemester] = tempPlan[sourceSemester].filter(id => id !== courseId);
-  tempPlan[targetSemester] = [...tempPlan[targetSemester], courseId];
+  workingPlan[sourceSemester] = workingPlan[sourceSemester].filter(id => id !== courseId);
+  workingPlan[targetSemester] = [...workingPlan[targetSemester], courseId];
   
-  // Check prereqs in the temporary plan
-  if (!arePrereqsSatisfied(courseId, targetSemester, tempPlan, courses)) {
-    console.log(`❌ ${courseId} prereqs not satisfied in ${targetSemester}`);
-    return null;
+  if (!arePrereqsSatisfied(courseId, targetSemester, workingPlan, courses)) {
+    logs.push(`❌ ${courseId} prereqs not satisfied in ${targetSemester}`);
+    return { plan: null, logs };
   }
   
-  // Check credits in the temporary plan
-  if (!hasEnoughCredits(courseId, targetSemester, tempPlan, courses)) {
-    console.log(`❌ ${courseId} needs more credits for ${targetSemester}`);
-    return null;
+  if (!hasEnoughCredits(courseId, targetSemester, workingPlan, courses)) {
+    logs.push(`❌ ${courseId} needs more credits for ${targetSemester}`);
+    return { plan: null, logs };
   }
   
-  // Move is valid - now cascade dependent courses
-  let finalPlan = { ...tempPlan };
+  logs.push(`✅ Moving ${courseId} from ${sourceSemester} to ${targetSemester}`);
+  
   const processed = new Set([courseId]);
   const toProcess = findDependentCourses(courseId, courses);
   
@@ -156,9 +260,8 @@ export function validateAndCascade(courseId, sourceSemester, targetSemester, cur
     if (processed.has(dependentId)) continue;
     processed.add(dependentId);
     
-    // Find which semester this dependent is currently in
     let currentSemester = null;
-    for (const [semester, courseIds] of Object.entries(finalPlan)) {
+    for (const [semester, courseIds] of Object.entries(workingPlan)) {
       if (courseIds.includes(dependentId)) {
         currentSemester = semester;
         break;
@@ -167,29 +270,25 @@ export function validateAndCascade(courseId, sourceSemester, targetSemester, cur
     
     if (!currentSemester) continue;
     
-    // Check if dependent still satisfies prereqs in current position
-    if (!arePrereqsSatisfied(dependentId, currentSemester, finalPlan, courses)) {
-      console.log(`⚠️ ${dependentId} needs to move due to ${courseId} change`);
+    if (!arePrereqsSatisfied(dependentId, currentSemester, workingPlan, courses)) {
+      logs.push(`⚠️ ${dependentId} needs to move due to ${courseId} change`);
       
-      // Find next valid semester
-      const newSemester = findNextValidSemester(dependentId, targetSemester, finalPlan, courses);
+      const newSemester = findNextValidSemester(dependentId, targetSemester, workingPlan, courses);
       
       if (!newSemester) {
-        console.log(`❌ Cannot find valid semester for ${dependentId}`);
-        return null; // Cascade failed
+        logs.push(`❌ Cannot find valid semester for ${dependentId}`);
+        return { plan: null, logs };
       }
       
-      // Move the dependent
-      finalPlan[currentSemester] = finalPlan[currentSemester].filter(id => id !== dependentId);
-      finalPlan[newSemester] = [...finalPlan[newSemester], dependentId];
+      workingPlan[currentSemester] = workingPlan[currentSemester].filter(id => id !== dependentId);
+      workingPlan[newSemester] = [...workingPlan[newSemester], dependentId];
       
-      console.log(`✅ Moved ${dependentId} from ${currentSemester} to ${newSemester}`);
+      logs.push(`✅ Moved ${dependentId} from ${currentSemester} to ${newSemester}`);
       
-      // Add dependents of this course to process queue
       const nextDependents = findDependentCourses(dependentId, courses);
       toProcess.push(...nextDependents);
     }
   }
   
-  return finalPlan;
+  return { plan: workingPlan, logs };
 }

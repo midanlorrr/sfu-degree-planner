@@ -1,4 +1,4 @@
-// App.jsx - update the handleCourseMove function
+// App.jsx - add notification panel
 import { useEffect, useState } from "react";
 import { fetchDegreeCourses } from "./api/fetchCourses";
 import { transformCourseData } from "./api/courseDataTransformer";
@@ -9,6 +9,7 @@ import { validateAndCascade } from "./utils/validation";
 export default function App() {
   const [courses, setCourses] = useState([]);
   const [plan, setPlan] = useState(DEFAULT_PLAN);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     fetchDegreeCourses().then((rawData) => {
@@ -18,22 +19,50 @@ export default function App() {
   }, []);
 
   function handleCourseMove(courseId, sourceSemester, targetSemester) {
-    console.log(`\n🔄 Attempting to move ${courseId} from ${sourceSemester} to ${targetSemester}`);
+    const logs = [];
+    const result = validateAndCascade(courseId, sourceSemester, targetSemester, plan, courses, logs);
     
-    const newPlan = validateAndCascade(courseId, sourceSemester, targetSemester, plan, courses);
+    setNotifications(logs);
     
-    if (newPlan) {
-      console.log('✅ Move successful with cascades applied');
-      setPlan(newPlan);
-    } else {
-      console.log('❌ Move blocked - invalid');
-      alert(`Cannot move ${courseId} to ${targetSemester}. Check console for details.`);
+    if (result.plan) {
+      setPlan(result.plan);
     }
   }
 
   return (
     <div style={{ color: 'black' }}>
       <h1>MSE Degree Planner</h1>
+      
+      {notifications.length > 0 && (
+        <div style={{ 
+          margin: '20px', 
+          padding: '15px', 
+          background: '#f5f5f5', 
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+          maxHeight: '200px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <strong>Move Log:</strong>
+            <button onClick={() => setNotifications([])} style={{ 
+              padding: '4px 8px', 
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}>Clear</button>
+          </div>
+          {notifications.map((msg, idx) => (
+            <div key={idx} style={{ 
+              padding: '4px 0', 
+              fontSize: '14px',
+              fontFamily: 'monospace'
+            }}>
+              {msg}
+            </div>
+          ))}
+        </div>
+      )}
+      
       {courses.length > 0 ? (
         <DegreePlan plan={plan} courses={courses} onCourseMove={handleCourseMove} />
       ) : (
