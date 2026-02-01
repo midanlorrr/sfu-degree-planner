@@ -39,8 +39,8 @@ export function transformCourseData(apiCourses) {
   // Debug: Check MSE 312 and MSE 381
   const mse312 = allCourses.find(c => c.id === 'MSE 312');
   const mse381 = allCourses.find(c => c.id === 'MSE 381');
-  console.log('MSE 312 coreqs:', mse312?.coreqs);
-  console.log('MSE 381 coreqs:', mse381?.coreqs);
+  // console.log('MSE 312 coreqs:', mse312?.coreqs);
+  // console.log('MSE 381 coreqs:', mse381?.coreqs);
 
   return allCourses;
 }

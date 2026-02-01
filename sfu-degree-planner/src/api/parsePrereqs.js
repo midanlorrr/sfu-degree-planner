@@ -71,7 +71,7 @@ const SKIP_KEYWORDS = [
 export function parsePrereqs(prereqString, courseId) {
   // I hate these two courses holy
   if (courseId === 'MSE 312') {
-    console.log('MSE 312 raw prereq string:', prereqString);
+    // console.log('MSE 312 raw prereq string:', prereqString);
   }
 
   // Extract corequisites FIRST (before any early returns)

@@ -3,12 +3,14 @@ import { fetchDegreeCourses } from "./api/fetchCourses";
 import { transformCourseData } from "./api/courseDataTransformer";
 import { DEFAULT_PLAN } from "./data/defaultPlan";
 import DegreePlan from "./components/DegreePlan";
-import { validateAndCascade } from "./utils/validation";
+import { validateAndCascade, cascadeFromFail } from "./utils/validation";
 
 export default function App() {
   const [courses, setCourses] = useState([]);
   const [plan, setPlan] = useState(DEFAULT_PLAN);
   const [notifications, setNotifications] = useState([]);
+  const [overrides, setOverrides] = useState({});
+  const [failedCourses, setFailedCourses] = useState({});
 
   useEffect(() => {
     fetchDegreeCourses().then((rawData) => {
@@ -53,6 +55,89 @@ export default function App() {
       
       setPlan(cleanedPlan);
     }
+  }
+
+  function handleOverride(courseId, targetSemester) {
+    // Find source semester
+    let sourceSemester = null;
+    for (const [semester, courseIds] of Object.entries(plan)) {
+      if (courseIds.includes(courseId)) {
+        sourceSemester = semester;
+        break;
+      }
+    }
+
+    if (!sourceSemester || sourceSemester === targetSemester) return;
+
+    // Move without validation
+    const newPlan = { ...plan };
+    newPlan[sourceSemester] = newPlan[sourceSemester].filter(id => id !== courseId);
+    newPlan[targetSemester] = [...newPlan[targetSemester], courseId];
+    
+    setPlan(newPlan);
+    
+    // Mark as overridden
+    setOverrides(prev => ({
+      ...prev,
+      [courseId]: true
+    }));
+    
+    setNotifications([`⚠️ OVERRIDE: ${courseId} forced to ${targetSemester} (validation bypassed)`]);
+  }
+
+  function handleMarkAsFailed(courseId, currentSemester) {
+    // Find next valid semester to retake this course
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+    
+    // Create a modified plan where this course is "completed" (failed but counts as taken)
+    const workingPlan = { ...plan };
+    
+    // Import the helper from validation.js to find next valid semester
+    // For now, just move it one semester forward as a simple implementation
+    const semesters = Object.keys(plan).sort((a, b) => {
+      const [yearA, termA] = a.split('-');
+      const [yearB, termB] = b.split('-');
+      if (yearA !== yearB) return yearA.localeCompare(yearB);
+      const termOrder = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
+      return termOrder[termA] - termOrder[termB];
+    });
+    
+    const currentIndex = semesters.indexOf(currentSemester);
+    let retakeSemester = null;
+    
+    // Find next semester where this course is offered
+    for (let i = currentIndex + 1; i < semesters.length; i++) {
+      const sem = semesters[i];
+      const [year, term] = sem.split('-');
+      if (course.offeringPattern.includes(term)) {
+        retakeSemester = sem;
+        break;
+      }
+    }
+    
+    if (!retakeSemester) {
+      setNotifications(['❌ Cannot find a valid semester to retake this course']);
+      return;
+    }
+    
+    // Extend plan to include retake semester if needed
+    let extendedPlan = { ...plan };
+    if (!extendedPlan[retakeSemester]) {
+      extendedPlan[retakeSemester] = [];
+    }
+
+    // Add the course to the retake semester
+    extendedPlan[retakeSemester] = [...extendedPlan[retakeSemester], `${courseId}-retake`];
+
+    setPlan(extendedPlan);
+    
+    setFailedCourses(prev => ({
+      ...prev,
+      [courseId]: { failedSemester: currentSemester, retakeSemester }
+    }));
+    
+    setNotifications([`❌ Marked ${courseId} as failed in ${currentSemester}`, `📝 Auto-scheduled retake in ${retakeSemester}`]);
   }
 
   function addPreviousSemester() {
@@ -146,6 +231,10 @@ export default function App() {
             onCourseMove={handleCourseMove}
             onAddPreviousSemester={addPreviousSemester}
             onAddNextSemester={addNextSemester}
+            overrides={overrides}
+            onOverride={handleOverride}
+            failedCourses={failedCourses}
+            onMarkAsFailed={handleMarkAsFailed}
           />
           
           {notifications.length > 0 && (

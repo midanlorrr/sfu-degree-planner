@@ -5,8 +5,10 @@ function getBaseCourseId(courseId) {
   return courseId.replace(/-\d+$/, "");
 }
 
-function CourseBlock({ course, isDragging }) {
+function CourseBlock({ course, courseId, isDragging, isOverridden, onOverride, isFailed, isRetake, onMarkAsFailed, semesterKey }) {
   const getBackgroundColor = () => {
+    if (isFailed) return '#ffcdd2'; // Red for failed
+    if (isRetake) return '#fff9c4'; // Yellow for retake
     if (course.type === 'coop') return '#e3f2fd';
     if (course.type === 'elective') return '#fff3e0';
     if (course.type === 'technical-elective') return '#ead3ee';
@@ -18,7 +20,7 @@ function CourseBlock({ course, isDragging }) {
       return null;
     }
     const [dept, number] = course.id.split(' ');
-    return `https://www.sfu.ca/students/calendar/2026/spring/courses/${dept.toLowerCase()}/${number.toLowerCase()}.html`;
+    return `https://www.sfu.ca/students/calendar/2026/spring/courses/${dept.toLowerCase()}/${number}.html`;
   };
 
   const courseUrl = getCourseUrl();
@@ -32,36 +34,87 @@ function CourseBlock({ course, isDragging }) {
       cursor: 'grab',
       opacity: isDragging ? 0.5 : 1,
       color: '#333',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      border: isOverridden ? '2px solid #ff9800' : isFailed ? '2px solid #f44336' : 'none',
+      position: 'relative'
     }}>
-      {courseUrl ? (
-        <a 
-          href={courseUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          style={{ 
-            color: '#667eea', 
-            textDecoration: 'none',
-            fontWeight: 'bold'
-          }}
-          onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-          onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {course.id}
-        </a>
-      ) : (
-        <strong style={{ color: '#667eea' }}>{course.id}</strong>
-      )}
-      <div style={{ fontSize: '12px', color: '#666' }}>{course.name}</div>
-      {course.credits > 0 && (
-        <div style={{ fontSize: '11px', color: '#999' }}>{course.credits} credits</div>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+        <div style={{ flex: 1 }}>
+          {courseUrl ? (
+            <a 
+              href={courseUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                color: '#667eea', 
+                textDecoration: 'none',
+                fontWeight: 'bold'
+              }}
+              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {course.id} {isRetake ? '(Retake)' : ''}
+            </a>
+          ) : (
+            <strong style={{ color: '#333' }}>{course.id} {isRetake ? '(Retake)' : ''}</strong>
+          )}
+          {isFailed && <span style={{ color: '#f44336', fontSize: '11px', fontWeight: 'bold' }}> FAILED</span>}
+          <div style={{ fontSize: '12px', color: '#666' }}>{course.name}</div>
+          {course.credits > 0 && (
+            <div style={{ fontSize: '11px', color: '#999' }}>{course.credits} credits</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {!isFailed && !isRetake && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkAsFailed(courseId, semesterKey);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                padding: '2px 6px',
+                fontSize: '10px',
+                background: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+              title="Mark as failed and schedule retake"
+            >
+              ❌
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOverride();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              padding: '2px 6px',
+              fontSize: '10px',
+              background: isOverridden ? '#ff9800' : '#e0e0e0',
+              color: isOverridden ? 'white' : '#666',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+            title={isOverridden ? 'Override active - ignoring validation' : 'Force course here (ignore validation)'}
+          >
+            {isOverridden ? '⚠️' : '🔓'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-function DraggableCourse({ courseId, course }) {
+function DraggableCourse({ courseId, course, isOverridden, onOverride, isFailed, isRetake, onMarkAsFailed, semesterKey }) {
   const [isDragging, setIsDragging] = useState(false);
 
   return (
@@ -74,12 +127,22 @@ function DraggableCourse({ courseId, course }) {
       }}
       onDragEnd={() => setIsDragging(false)}
     >
-      <CourseBlock course={course} isDragging={isDragging} />
+      <CourseBlock 
+        course={course} 
+        courseId={courseId}
+        isDragging={isDragging}
+        isOverridden={isOverridden}
+        onOverride={onOverride}
+        isFailed={isFailed}
+        isRetake={isRetake}
+        onMarkAsFailed={onMarkAsFailed}
+        semesterKey={semesterKey}
+      />
     </div>
   );
 }
 
-function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop }) {
+function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop, overrides, onOverride, failedCourses, onMarkAsFailed }) {
   const [isOver, setIsOver] = useState(false);
 
   return (
@@ -110,18 +173,32 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
     >
       <h3 style={{ margin: '0 0 16px 0', color: '#667eea', fontSize: '18px', fontWeight: '600' }}>{term} {year}</h3>
       {courseIds.map((courseId, idx) => {
-        const course = courses.find(c => c.id === getBaseCourseId(courseId));
+        const baseCourseId = getBaseCourseId(courseId);
+        const course = courses.find(c => c.id === baseCourseId);
         if (!course) return null;
         
+        const isRetake = courseId.includes('-retake');
+        const isFailed = failedCourses && failedCourses[baseCourseId] && failedCourses[baseCourseId].failedSemester === semesterKey;
+        
         return (
-          <DraggableCourse key={`${courseId}-${idx}`} courseId={courseId} course={course} />
+          <DraggableCourse 
+            key={`${courseId}-${idx}`} 
+            courseId={courseId} 
+            course={course}
+            isOverridden={overrides && overrides[courseId]}
+            onOverride={() => onOverride(courseId, semesterKey)}
+            isFailed={isFailed}
+            isRetake={isRetake}
+            onMarkAsFailed={onMarkAsFailed}
+            semesterKey={semesterKey}
+          />
         );
       })}
     </div>
   );
 }
 
-export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousSemester, onAddNextSemester }) {
+export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousSemester, onAddNextSemester, overrides, onOverride, failedCourses, onMarkAsFailed }) {
   const semesters = Object.keys(plan).sort((a, b) => {
     const [yearA, termA] = a.split('-');
     const [yearB, termB] = b.split('-');
@@ -148,6 +225,10 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
       onCourseMove(courseId, sourceSemester, targetSemester);
     }
   }
+
+  function handleMarkAsFailedLocal(courseId, semesterKey) {
+  onMarkAsFailed(courseId, semesterKey);
+}
 
   return (
     <div 
@@ -202,6 +283,10 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
             courseIds={courseIds}
             courses={courses}
             onDrop={handleDrop}
+            overrides={overrides}
+            onOverride={onOverride}
+            failedCourses={failedCourses}
+            onMarkAsFailed={handleMarkAsFailedLocal}
           />
         );
       })}

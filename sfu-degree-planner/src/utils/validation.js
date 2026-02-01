@@ -24,6 +24,53 @@ function getEarliestValidStart(courseId, workingPlan, courses) {
   return latestPrereqSemester;
 }
 
+export function cascadeFromFail(failedCourseId, failedSemester, retakeSemester, currentPlan, courses, failedCourses, logs = []) {
+  let workingPlan = extendPlanIfNeeded(currentPlan, `${new Date().getFullYear() + 10}-Fall`);
+
+  const processed = new Set();
+  const toProcess = findDependentCourses(failedCourseId, courses);
+
+  while (toProcess.length > 0) {
+    const dependentId = toProcess.shift();
+
+    if (processed.has(dependentId)) continue;
+    processed.add(dependentId);
+
+    // Find where this dependent currently is
+    let currentSemester = null;
+    for (const [semester, courseIds] of Object.entries(workingPlan)) {
+      if (courseIds.includes(dependentId)) {
+        currentSemester = semester;
+        break;
+      }
+    }
+
+    if (!currentSemester) continue;
+
+    // Check prereqs, but pass failedCourses so it knows to skip failed ones
+    if (!arePrereqsSatisfied(dependentId, currentSemester, workingPlan, courses, false, failedCourses)) {
+      logs.push(`⚠️ ${dependentId} needs to move (prereq ${failedCourseId} failed)`);
+
+      const searchAfter = getEarliestValidStart(dependentId, workingPlan, courses) || retakeSemester;
+      const newSemester = findNextValidSemester(dependentId, searchAfter, workingPlan, courses);
+
+      if (!newSemester) {
+        logs.push(`❌ Cannot find valid semester for ${dependentId}`);
+        continue;
+      }
+
+      workingPlan[currentSemester] = workingPlan[currentSemester].filter(id => id !== dependentId);
+      workingPlan[newSemester] = [...workingPlan[newSemester], dependentId];
+      logs.push(`✅ Moved ${dependentId} from ${currentSemester} to ${newSemester}`);
+
+      const nextDependents = findDependentCourses(dependentId, courses);
+      toProcess.push(...nextDependents);
+    }
+  }
+
+  return { plan: workingPlan, logs };
+}
+
 // Helper to convert semester key to a comparable number
 // "2024-Fall" -> 20242, "2025-Spring" -> 20250, "2025-Summer" -> 20251
 function semesterToNumber(semesterKey) {
@@ -61,7 +108,7 @@ function getCreditsBeforeSemester(semesterKey, plan, courses) {
 }
 
 // Check if all prereqs for a course are satisfied before a semester
-function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false) {
+function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false, failedCourses = {}) {
   const course = courses.find(c => c.id === getBaseCourseId(courseId));
   if (!course) return false;
 
@@ -76,9 +123,14 @@ function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false
 
   for (const [semester, courseIds] of Object.entries(plan)) {
     if (semesterToNumber(semester) < targetNum) {
-      courseIds.forEach(id => completedCourses.add(id));
-    } else if (semesterToNumber(semester) === targetNum) {
-      courseIds.forEach(id => coreqCourses.add(id));
+      courseIds.forEach(id => {
+        // Don't count failed courses as completed (but DO count retakes)
+        const baseId = getBaseCourseId(id);
+        const isFailed = failedCourses[baseId] && failedCourses[baseId].failedSemester === semester;
+        if (!isFailed) {
+          completedCourses.add(baseId);  // Add the BASE id so "MSE 103-retake" counts as "MSE 103"
+        }
+      });
     }
   }
   
