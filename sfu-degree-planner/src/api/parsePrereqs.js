@@ -43,11 +43,11 @@ const MANUAL_PREREQS = {
   "MSE 411": [["MSE 410"]],
   "MSE 310": [["MSE 224"], ["MSE 222"], ["MSE 251"], ["MSE 280"]],
   "MSE 320": [["MSE 220"], ["MSE 224"]],
-  "MSE 321": [["MATH 251"], ["MSE 223"]],
+  "MSE 321": [["MATH 251"], ["MSE 323"]], // Changed to use new course number
   "MSE 312": [["MSE 320"], ["MSE 381"]],
-  "MSE 212": [],  // new course, prereqs TBD
-  "MSE 252": [],  // new course, prereqs TBD
-  "MSE 323": [],  // new course, prereqs TBD
+  "MSE 212": [["MSE 103"], ["MSE 112"]],
+  "MSE 252": [],
+  "MSE 323": [["PHYS 140"], ["MATH 251"]], // Added renamed course
 };
 
 // Regex that matches a course ID like "MSE 221" or "MSE 101W"

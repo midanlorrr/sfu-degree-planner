@@ -28,5 +28,15 @@ export const SPECIAL_COURSES = {
     offerings: [],
     offeringPattern: ["Fall", "Spring", "Summer"],
     type: "technical-elective"
+  },
+  "MSE 323": {
+    id: "MSE 323",
+    name: "Introduction to Fluid Mechanics",
+    credits: 4,
+    prereqs: [["PHYS 140"], ["MATH 251"]],
+    minCredits: 0,
+    offerings: [],
+    offeringPattern: ["Spring"],
+    type: "renamed"
   }
 };
