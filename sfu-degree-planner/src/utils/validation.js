@@ -37,7 +37,7 @@ function getCreditsBeforeSemester(semesterKey, plan, courses) {
 }
 
 // Check if all prereqs for a course are satisfied before a semester
-function arePrereqsSatisfied(courseId, semesterKey, plan, courses) {
+function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false) {
   const course = courses.find(c => c.id === courseId);
   if (!course) return false;
   
@@ -47,18 +47,24 @@ function arePrereqsSatisfied(courseId, semesterKey, plan, courses) {
   const targetNum = semesterToNumber(semesterKey);
   const completedCourses = new Set();
   
-  // Collect all courses completed before this semester
   for (const [semester, courseIds] of Object.entries(plan)) {
     if (semesterToNumber(semester) < targetNum) {
       courseIds.forEach(id => completedCourses.add(id));
     }
   }
   
-  // Check each AND group
+  if (debug) {
+    console.log(`      Completed before ${semesterKey}: ${Array.from(completedCourses).join(', ')}`);
+  }
+  
   for (const andGroup of prereqs) {
-    // At least one course from this OR group must be completed
     const satisfied = andGroup.some(prereqId => completedCourses.has(prereqId));
-    if (!satisfied) return false;
+    if (!satisfied) {
+      if (debug) {
+        console.log(`      Missing: need one of [${andGroup.join(', ')}]`);
+      }
+      return false;
+    }
   }
   
   return true;
@@ -137,9 +143,14 @@ function findNextValidSemester(courseId, afterSemester, plan, courses) {
   const semestersInOrder = getSemestersInOrder(extendedPlan);
   const afterNum = semesterToNumber(afterSemester);
   
-  console.log(`\n🔍 Finding semester for ${courseId} after ${afterSemester}`);
-  
   const course = courses.find(c => c.id === courseId);
+  
+  if (!course) {
+    console.log(`⚠️ Course ${courseId} not found in course data`);
+    return null;
+  }
+  
+  console.log(`\n🔍 Finding semester for ${courseId} after ${afterSemester}`);
   console.log(`   Prereqs: ${JSON.stringify(course.prereqs)}`);
   console.log(`   Offering pattern: ${JSON.stringify(course.offeringPattern)}`);
   
@@ -152,7 +163,7 @@ function findNextValidSemester(courseId, afterSemester, plan, courses) {
     }
     
     const offered = isOfferedInSemester(courseId, semester, courses);
-    const prereqsOk = arePrereqsSatisfied(courseId, semester, extendedPlan, courses);
+    const prereqsOk = arePrereqsSatisfied(courseId, semester, extendedPlan, courses, true);
     const creditsOk = hasEnoughCredits(courseId, semester, extendedPlan, courses);
     
     console.log(`   Checking ${semester}: offered=${offered}, prereqs=${prereqsOk}, credits=${creditsOk}`);
