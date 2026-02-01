@@ -86,17 +86,17 @@ export function parsePrereqs(prereqString, courseId) {
 
   // Return empty for entry-level courses
   if (ENTRY_LEVEL_COURSES.includes(courseId)) {
-    return [];
+    return { prereqs: [], coreqs };
   }
 
   // Return hardcoded result for manually overridden courses
   if (MANUAL_PREREQS[courseId] !== undefined) {
-    return MANUAL_PREREQS[courseId];
+    return { prereqs: MANUAL_PREREQS[courseId], coreqs };
   }
 
   // If empty string, no prereqs
   if (!prereqString || prereqString.trim() === "") {
-    return [];
+    return { prereqs: [], coreqs };
   }
 
   let cleaned = prereqString;
@@ -110,7 +110,7 @@ export function parsePrereqs(prereqString, courseId) {
   COURSE_ID_REGEX.lastIndex = 0;
 
   if (hasSkipKeyword && !hasCourseIds) {
-    return [];
+    return { prereqs: [], coreqs };
   }
 
   // --- BARE NUMBER INHERITANCE ---

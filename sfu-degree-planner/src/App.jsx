@@ -19,6 +19,7 @@ export default function App() {
       // console.log('Special courses:', transformedCourses.filter(c => c.type));
       // console.log('COOP exists?', transformedCourses.find(c => c.id === 'COOP'));
       setCourses(transformedCourses);
+      window.__courses = transformedCourses;
     });
   }, []);
 

@@ -1,5 +1,5 @@
 function getBaseCourseId(courseId) {
-  return courseId.replace(/-\d+$/, "");
+  return courseId.replace(/-retake$/, "").replace(/-\d+$/, "");
 }
 
 function getEarliestValidStart(courseId, workingPlan, courses) {
