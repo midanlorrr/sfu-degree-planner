@@ -44,7 +44,7 @@ const MANUAL_PREREQS = {
   "MSE 310": [["MSE 224"], ["MSE 222"], ["MSE 251"], ["MSE 280"]],
   "MSE 320": [["MSE 220"], ["MSE 224"]],
   "MSE 321": [["MATH 251"], ["MSE 323"]], // Changed to use new course number
-  "MSE 312": [["MSE 320"], ["MSE 381"]],
+  //"MSE 312": [["MSE 320"], ["MSE 381"], ["MSE 112"]],
   "MSE 212": [["MSE 103"], ["MSE 112"]],
   "MSE 252": [],
   "MSE 323": [["MSE 103"], ["MATH 251"]], // Added renamed course
@@ -69,6 +69,21 @@ const SKIP_KEYWORDS = [
 ];
 
 export function parsePrereqs(prereqString, courseId) {
+  // I hate these two courses holy
+  if (courseId === 'MSE 312') {
+    console.log('MSE 312 raw prereq string:', prereqString);
+  }
+
+  // Extract corequisites FIRST (before any early returns)
+  const coreqPattern = /([A-Z]{2,4}\s*\d+[A-Z]?)\s+(?:\(or[^)]+\)\s*[,.]?\s*)?may be taken concurrently/gi;
+  const coreqMatches = prereqString ? prereqString.match(coreqPattern) : null;
+  const coreqs = coreqMatches 
+    ? coreqMatches.map(match => {
+        const courseMatch = match.match(/^([A-Z]{2,4}\s*\d+[A-Z]?)/);
+        return courseMatch ? courseMatch[1].replace(/([A-Z]+)(\d)/, "$1 $2") : null;
+      }).filter(id => id && id !== courseId)
+    : [];
+
   // Return empty for entry-level courses
   if (ENTRY_LEVEL_COURSES.includes(courseId)) {
     return [];
@@ -172,5 +187,5 @@ export function parsePrereqs(prereqString, courseId) {
     .map((group) => group.filter((id) => DEGREE_COURSE_IDS.includes(id)))
     .filter((group) => group.length > 0);
 
-  return filtered;
+  return { prereqs: filtered, coreqs };
 }

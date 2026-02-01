@@ -13,9 +13,9 @@ export default function App() {
   useEffect(() => {
     fetchDegreeCourses().then((rawData) => {
       const transformedCourses = transformCourseData(rawData);
-      console.log('Total courses loaded:', transformedCourses.length);
-      console.log('Special courses:', transformedCourses.filter(c => c.type));
-      console.log('COOP exists?', transformedCourses.find(c => c.id === 'COOP'));
+      // console.log('Total courses loaded:', transformedCourses.length);
+      // console.log('Special courses:', transformedCourses.filter(c => c.type));
+      // console.log('COOP exists?', transformedCourses.find(c => c.id === 'COOP'));
       setCourses(transformedCourses);
     });
   }, []);

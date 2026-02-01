@@ -9,7 +9,7 @@ export function transformCourseData(apiCourses) {
       id: courseId,
       name: course.title,
       credits: parseInt(course.units, 10),
-      prereqs: parsePrereqs(course.prerequisites, courseId),
+      ...parsePrereqs(course.prerequisites, courseId),
       minCredits: parseMinCredits(course.prerequisites),
       offerings: extractOfferings(course.offerings),
       offeringPattern: extractOfferingPattern(course.offerings)
@@ -17,7 +17,32 @@ export function transformCourseData(apiCourses) {
   });
   
   // Add special courses (COOP, CMPL, MSE 4XX)
-  return [...transformedCourses, ...Object.values(SPECIAL_COURSES)];
+  const allCourses = [...transformedCourses, ...Object.values(SPECIAL_COURSES)];
+
+  // Make coreqs bidirectional
+  allCourses.forEach(course => {
+    if (!course.coreqs) course.coreqs = []; // Initialize if missing
+    
+    if (course.coreqs.length > 0) {
+      course.coreqs.forEach(coreqId => {
+        const coreqCourse = allCourses.find(c => c.id === coreqId);
+        if (coreqCourse) {
+          if (!coreqCourse.coreqs) coreqCourse.coreqs = []; // Initialize if missing
+          if (!coreqCourse.coreqs.includes(course.id)) {
+            coreqCourse.coreqs.push(course.id);
+          }
+        }
+      });
+    }
+  });
+
+  // Debug: Check MSE 312 and MSE 381
+  const mse312 = allCourses.find(c => c.id === 'MSE 312');
+  const mse381 = allCourses.find(c => c.id === 'MSE 381');
+  console.log('MSE 312 coreqs:', mse312?.coreqs);
+  console.log('MSE 381 coreqs:', mse381?.coreqs);
+
+  return allCourses;
 }
 
 function parseMinCredits(prereqString) {

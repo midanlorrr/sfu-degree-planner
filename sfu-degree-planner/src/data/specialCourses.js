@@ -41,32 +41,32 @@ export const SPECIAL_COURSES = {
   },
   "MSE 212": {
     id: "MSE 212",
-    name: "MSE 212", // You'll need to find the real course name
-    credits: 3, // Estimate - verify this
+    name: "Mechatronic Design Studio II", 
+    credits: 3,
     prereqs: [["MSE 103"], ["MSE 112"]], // From MANUAL_PREREQS it's empty
     minCredits: 0,
     offerings: [],
-    offeringPattern: ["Spring"], // Check your DEFAULT_PLAN to see when it's scheduled
+    offeringPattern: ["Spring"], 
     type: "new-course"
   },
   "MSE 252": {
     id: "MSE 252",
-    name: "MSE 252", // You'll need to find the real course name
-    credits: 3, // Estimate - verify this
+    name: "Fundamentals of Digital Logic and PLCs",
+    credits: 3, 
     prereqs: [], // From MANUAL_PREREQS it's empty
     minCredits: 0,
     offerings: [],
-    offeringPattern: ["Spring"], // Check your DEFAULT_PLAN
+    offeringPattern: ["Spring"], 
     type: "new-course"
   },
   "MSE 222": {
     id: "MSE 222",
-    name: "MSE 222", // You'll need to find the real course name
-    credits: 3, // Estimate - verify this
+    name: "Kinematics and Dynamics of Rigid Bodies and Mechanisms", 
+    credits: 4, 
     prereqs: [["MSE 103"], ["MATH 251"]], // From MANUAL_PREREQS it's empty
     minCredits: 0,
     offerings: [],
-    offeringPattern: ["Spring"], // Check your DEFAULT_PLAN
+    offeringPattern: ["Spring"],
     type: "updated-prereqs"
   }
 };

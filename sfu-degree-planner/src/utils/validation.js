@@ -64,16 +64,21 @@ function getCreditsBeforeSemester(semesterKey, plan, courses) {
 function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false) {
   const course = courses.find(c => c.id === getBaseCourseId(courseId));
   if (!course) return false;
+
+  console.log(`Checking ${courseId}: coreqs =`, course.coreqs);
   
   const prereqs = course.prereqs;
   if (prereqs.length === 0) return true;
   
   const targetNum = semesterToNumber(semesterKey);
   const completedCourses = new Set();
-  
+  const coreqCourses = new Set();
+
   for (const [semester, courseIds] of Object.entries(plan)) {
     if (semesterToNumber(semester) < targetNum) {
       courseIds.forEach(id => completedCourses.add(id));
+    } else if (semesterToNumber(semester) === targetNum) {
+      courseIds.forEach(id => coreqCourses.add(id));
     }
   }
   
@@ -82,7 +87,11 @@ function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false
   }
   
   for (const andGroup of prereqs) {
-    const satisfied = andGroup.some(prereqId => completedCourses.has(prereqId));
+    const satisfied = andGroup.some(prereqId => {
+      const isCompleted = completedCourses.has(prereqId);
+      const isCoreq = course.coreqs && course.coreqs.includes(prereqId) && coreqCourses.has(prereqId);
+      return isCompleted || isCoreq;
+    });
     if (!satisfied) {
       if (debug) {
         console.log(`      Missing: need one of [${andGroup.join(', ')}]`);
@@ -117,10 +126,11 @@ function findDependentCourses(courseId, courses) {
   const dependents = [];
   
   courses.forEach(course => {
-    if (course.prereqs.length === 0) return;
+    const prereqs = course.prereqs || [];
+    if (prereqs.length === 0) return;
     
     // Check if courseId appears in any of the prereq groups
-    for (const andGroup of course.prereqs) {
+    for (const andGroup of prereqs) {
       if (andGroup.includes(courseId)) {
         dependents.push(course.id);
         break;

@@ -13,6 +13,16 @@ function CourseBlock({ course, isDragging }) {
     return '#ecdee8';
   };
 
+  const getCourseUrl = () => {
+    if (course.type === 'coop' || course.type === 'elective' || course.type === 'technical-elective') {
+      return null;
+    }
+    const [dept, number] = course.id.split(' ');
+    return `https://www.sfu.ca/students/calendar/2026/spring/courses/${dept.toLowerCase()}/${number.toLowerCase()}.html`;
+  };
+
+  const courseUrl = getCourseUrl();
+
   return (
     <div style={{ 
       padding: '10px', 
@@ -24,7 +34,25 @@ function CourseBlock({ course, isDragging }) {
       color: '#333',
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     }}>
-      <strong style={{ color: '#333' }}>{course.id}</strong>
+      {courseUrl ? (
+        <a 
+          href={courseUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            color: '#667eea', 
+            textDecoration: 'none',
+            fontWeight: 'bold'
+          }}
+          onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+          onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {course.id}
+        </a>
+      ) : (
+        <strong style={{ color: '#667eea' }}>{course.id}</strong>
+      )}
       <div style={{ fontSize: '12px', color: '#666' }}>{course.name}</div>
       {course.credits > 0 && (
         <div style={{ fontSize: '11px', color: '#999' }}>{course.credits} credits</div>
