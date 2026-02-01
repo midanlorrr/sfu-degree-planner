@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
 import { fetchDegreeCourses } from "./api/fetchCourses";
-import { parsePrereqs } from "./api/parsePrereqs";
+import { transformCourseData } from "./api/courseDataTransformer";
 
 export default function App() {
   const [courses, setCourses] = useState([]);
 
   useEffect(() => {
-    fetchDegreeCourses().then((data) => {
-      setCourses(data);
-      // Test the parser on every course
-      data.forEach((course) => {
-        const id = `${course.dept} ${course.number}`;
-        const parsed = parsePrereqs(course.prerequisites, id);
-        console.log(`${id}: ${JSON.stringify(parsed)}`);
-      });
+    fetchDegreeCourses().then((rawData) => {
+      const transformedCourses = transformCourseData(rawData);
+      setCourses(transformedCourses);
+      console.log("Transformed courses:", transformedCourses);
     });
   }, []);
 

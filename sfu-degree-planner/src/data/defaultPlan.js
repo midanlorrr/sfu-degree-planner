@@ -1,0 +1,14 @@
+export const DEFAULT_PLAN = {
+  "2024-Fall": ["CMPT 130", "MATH 150", "CHEM 120", "MSE 103", "CMPL"],
+  "2025-Spring": ["MATH 152", "MATH 232", "PHYS 141", "MSE 102", "MSE 152"],
+  "2025-Summer": ["MATH 251", "MSE 101W", "MSE 112", "CMPL"],
+  "2025-Fall": ["MSE 210", "MSE 220", "MSE 224", "MSE 250", "MSE 281"],
+  "2026-Spring": ["MSE 212", "MSE 222", "MSE 251", "MSE 252", "MSE 280"],
+  "2026-Summer": ["COOP"],
+  "2026-Fall": ["MSE 323", "MSE 310", "MSE 320", "MSE 4XX", "CMPL"],
+  "2027-Spring": ["COOP"],
+  "2027-Summer": ["MSE 300", "MSE 312", "MSE 321", "MSE 353", "MSE 381"],
+  "2027-Fall": ["COOP"],
+  "2028-Spring": ["MSE 402", "MSE 410", "MSE 4XX", "MSE 4XX"],
+  "2028-Summer": ["MSE 352", "MSE 405W", "MSE 411", "MSE 4XX"]
+};
