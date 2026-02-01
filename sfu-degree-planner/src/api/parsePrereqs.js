@@ -48,6 +48,7 @@ const MANUAL_PREREQS = {
   "MSE 212": [["MSE 103"], ["MSE 112"]],
   "MSE 252": [],
   "MSE 323": [["MSE 103"], ["MATH 251"]], // Added renamed course
+  "MSE 222": [["MSE 103"], ["MATH 251"]]
 };
 
 // Regex that matches a course ID like "MSE 221" or "MSE 101W"

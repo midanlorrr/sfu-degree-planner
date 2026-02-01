@@ -58,5 +58,15 @@ export const SPECIAL_COURSES = {
     offerings: [],
     offeringPattern: ["Spring"], // Check your DEFAULT_PLAN
     type: "new-course"
+  },
+  "MSE 222": {
+    id: "MSE 222",
+    name: "MSE 222", // You'll need to find the real course name
+    credits: 3, // Estimate - verify this
+    prereqs: [["MSE 103"], ["MATH 251"]], // From MANUAL_PREREQS it's empty
+    minCredits: 0,
+    offerings: [],
+    offeringPattern: ["Spring"], // Check your DEFAULT_PLAN
+    type: "updated-prereqs"
   }
 };

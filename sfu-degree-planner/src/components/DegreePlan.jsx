@@ -1,6 +1,10 @@
 // components/DegreePlan.jsx
 import { useState } from 'react';
 
+function getBaseCourseId(courseId) {
+  return courseId.replace(/-\d+$/, "");
+}
+
 function CourseBlock({ course, isDragging }) {
   const getBackgroundColor = () => {
     if (course.type === 'coop') return '#e3f2fd';
@@ -71,7 +75,7 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
     >
       <h3>{term} {year}</h3>
       {courseIds.map((courseId, idx) => {
-        const course = courses.find(c => c.id === courseId);
+        const course = courses.find(c => c.id === getBaseCourseId(courseId));
         if (!course) return null;
         
         return (

@@ -1,4 +1,28 @@
-// utils/validation.js
+function getBaseCourseId(courseId) {
+  return courseId.replace(/-\d+$/, "");
+}
+
+function getEarliestValidStart(courseId, workingPlan, courses) {
+  const course = courses.find(c => c.id === getBaseCourseId(courseId));
+  if (!course || course.prereqs.length === 0) return null;
+
+  let latestPrereqSemester = null;
+
+  for (const andGroup of course.prereqs) {
+    // Find where any satisfying prereq in this group actually is
+    for (const prereqId of andGroup) {
+      for (const [semester, courseIds] of Object.entries(workingPlan)) {
+        if (courseIds.includes(prereqId)) {
+          if (!latestPrereqSemester || semesterToNumber(semester) > semesterToNumber(latestPrereqSemester)) {
+            latestPrereqSemester = semester;
+          }
+        }
+      }
+    }
+  }
+
+  return latestPrereqSemester;
+}
 
 // Helper to convert semester key to a comparable number
 // "2024-Fall" -> 20242, "2025-Spring" -> 20250, "2025-Summer" -> 20251
@@ -16,7 +40,7 @@ function getSemestersInOrder(plan) {
 // Check if a semester is a COOP semester
 function isCoopSemester(semesterKey, plan) {
   const courses = plan[semesterKey] || [];
-  return courses.includes('COOP');
+  return courses.some(id => getBaseCourseId(id) === 'COOP');
 }
 
 // Calculate total credits earned before a given semester
@@ -27,7 +51,7 @@ function getCreditsBeforeSemester(semesterKey, plan, courses) {
   for (const [semester, courseIds] of Object.entries(plan)) {
     if (semesterToNumber(semester) < targetNum) {
       courseIds.forEach(courseId => {
-        const course = courses.find(c => c.id === courseId);
+        const course = courses.find(c => c.id === getBaseCourseId(courseId));
         if (course) totalCredits += course.credits;
       });
     }
@@ -38,7 +62,7 @@ function getCreditsBeforeSemester(semesterKey, plan, courses) {
 
 // Check if all prereqs for a course are satisfied before a semester
 function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false) {
-  const course = courses.find(c => c.id === courseId);
+  const course = courses.find(c => c.id === getBaseCourseId(courseId));
   if (!course) return false;
   
   const prereqs = course.prereqs;
@@ -72,7 +96,7 @@ function arePrereqsSatisfied(courseId, semesterKey, plan, courses, debug = false
 
 // Check if course is offered in a given semester
 function isOfferedInSemester(courseId, semesterKey, courses) {
-  const course = courses.find(c => c.id === courseId);
+  const course = courses.find(c => c.id === getBaseCourseId(courseId));
   if (!course) return false;
   
   const [year, term] = semesterKey.split('-');
@@ -81,7 +105,7 @@ function isOfferedInSemester(courseId, semesterKey, courses) {
 
 // Check if student has enough credits for a course
 function hasEnoughCredits(courseId, semesterKey, plan, courses) {
-  const course = courses.find(c => c.id === courseId);
+  const course = courses.find(c => c.id === getBaseCourseId(courseId));
   if (!course || course.minCredits === 0) return true;
   
   const earnedCredits = getCreditsBeforeSemester(semesterKey, plan, courses);
@@ -143,7 +167,7 @@ function findNextValidSemester(courseId, afterSemester, plan, courses) {
   const semestersInOrder = getSemestersInOrder(extendedPlan);
   const afterNum = semesterToNumber(afterSemester);
   
-  const course = courses.find(c => c.id === courseId);
+  const course = courses.find(c => c.id === getBaseCourseId(courseId));
   
   if (!course) {
     console.log(`⚠️ Course ${courseId} not found in course data`);
@@ -189,47 +213,59 @@ export function validateAndCascade(courseId, sourceSemester, targetSemester, cur
   let workingPlan = extendPlanIfNeeded(currentPlan, `${new Date().getFullYear() + 10}-Fall`);
   
   // Special handling for COOP moves
-  if (courseId === 'COOP') {
+  if (getBaseCourseId(courseId) === 'COOP') {
     logs.push(`✅ Moving COOP from ${sourceSemester} to ${targetSemester}`);
     
-    workingPlan[sourceSemester] = workingPlan[sourceSemester].filter(id => id !== 'COOP');
-    const displacedCourses = workingPlan[targetSemester].filter(id => id !== 'COOP');
-    workingPlan[targetSemester] = ['COOP'];
+    workingPlan[sourceSemester] = workingPlan[sourceSemester].filter(id => id !== courseId);
+    const displacedCourses = workingPlan[targetSemester].filter(id => getBaseCourseId(id) !== 'COOP');
+    workingPlan[targetSemester] = [...workingPlan[targetSemester], courseId];
     
+    // First, move all displaced courses out
+    const toProcess = [];
     for (const displacedId of displacedCourses) {
       logs.push(`⚠️ ${displacedId} displaced by COOP in ${targetSemester}`);
-      
-      const newSemester = findNextValidSemester(displacedId, targetSemester, workingPlan, courses);
-      
-      if (!newSemester) {
-        logs.push(`❌ Cannot find valid semester for displaced ${displacedId}`);
-        return { plan: null, logs };
+      toProcess.push(displacedId);
+    }
+
+    const processed = new Set();
+
+    while (toProcess.length > 0) {
+      const currentId = toProcess.shift();
+
+      if (processed.has(currentId)) continue;
+      processed.add(currentId);
+
+      // Find where this course currently is
+      let currentSemester = null;
+      for (const [semester, courseIds] of Object.entries(workingPlan)) {
+        if (courseIds.includes(currentId)) {
+          currentSemester = semester;
+          break;
+        }
       }
-      
-      workingPlan[newSemester] = [...workingPlan[newSemester], displacedId];
-      logs.push(`✅ Moved ${displacedId} to ${newSemester}`);
-      
-      const dependents = findDependentCourses(displacedId, courses);
-      for (const depId of dependents) {
-        let depCurrentSemester = null;
-        for (const [semester, courseIds] of Object.entries(workingPlan)) {
-          if (courseIds.includes(depId)) {
-            depCurrentSemester = semester;
-            break;
-          }
+
+      if (!currentSemester) continue;
+
+      // Check if it needs to move (either it's in the COOP semester, or its prereqs broke)
+      const inCoopSemester = currentSemester === targetSemester;
+      const prereqsBroken = !arePrereqsSatisfied(currentId, currentSemester, workingPlan, courses);
+
+      if (inCoopSemester || prereqsBroken) {
+        const searchAfter = getEarliestValidStart(currentId, workingPlan, courses) || targetSemester;
+        const newSemester = findNextValidSemester(currentId, searchAfter, workingPlan, courses);
+
+        if (!newSemester) {
+          logs.push(`❌ Cannot find valid semester for ${currentId}`);
+          return { plan: null, logs };
         }
-        
-        if (depCurrentSemester && !arePrereqsSatisfied(depId, depCurrentSemester, workingPlan, courses)) {
-          const depNewSemester = findNextValidSemester(depId, newSemester, workingPlan, courses);
-          if (!depNewSemester) {
-            logs.push(`❌ Cannot cascade ${depId}`);
-            return { plan: null, logs };
-          }
-          
-          workingPlan[depCurrentSemester] = workingPlan[depCurrentSemester].filter(id => id !== depId);
-          workingPlan[depNewSemester] = [...workingPlan[depNewSemester], depId];
-          logs.push(`✅ Cascaded ${depId} from ${depCurrentSemester} to ${depNewSemester}`);
-        }
+
+        workingPlan[currentSemester] = workingPlan[currentSemester].filter(id => id !== currentId);
+        workingPlan[newSemester] = [...workingPlan[newSemester], currentId];
+        logs.push(`✅ Moved ${currentId} from ${currentSemester} to ${newSemester}`);
+
+        // Add all dependents of this course to the queue
+        const dependents = findDependentCourses(getBaseCourseId(currentId), courses);
+        toProcess.push(...dependents);
       }
     }
     
@@ -284,7 +320,8 @@ export function validateAndCascade(courseId, sourceSemester, targetSemester, cur
     if (!arePrereqsSatisfied(dependentId, currentSemester, workingPlan, courses)) {
       logs.push(`⚠️ ${dependentId} needs to move due to ${courseId} change`);
       
-      const newSemester = findNextValidSemester(dependentId, targetSemester, workingPlan, courses);
+      const searchAfter = getEarliestValidStart(dependentId, workingPlan, courses) || currentSemester;
+      const newSemester = findNextValidSemester(dependentId, searchAfter, workingPlan, courses);
       
       if (!newSemester) {
         logs.push(`❌ Cannot find valid semester for ${dependentId}`);
