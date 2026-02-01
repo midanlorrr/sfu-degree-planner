@@ -86,7 +86,7 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
   );
 }
 
-export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousSemester }) {
+export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousSemester, onAddNextSemester }) {
   const semesters = Object.keys(plan).sort((a, b) => {
     const [yearA, termA] = a.split('-');
     const [yearB, termB] = b.split('-');
@@ -115,7 +115,23 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
   }
 
   return (
-    <div style={{ display: 'flex', gap: '20px', padding: '20px', overflowX: 'auto', alignItems: 'flex-start' }}>
+    <div 
+      ref={(el) => {
+        if (el) {
+          el.addEventListener('dragover', (e) => {
+            const containerRect = el.getBoundingClientRect();
+            const scrollSpeed = 10;
+            
+            if (e.clientX < containerRect.left + 100) {
+              el.scrollLeft -= scrollSpeed;
+            } else if (e.clientX > containerRect.right - 100) {
+              el.scrollLeft += scrollSpeed;
+            }
+          });
+        }
+      }}
+      style={{ display: 'flex', gap: '20px', padding: '20px', overflowX: 'auto', alignItems: 'flex-start' }}
+    >
       <button 
         onClick={onAddPreviousSemester}
         style={{
@@ -149,6 +165,23 @@ export default function DegreePlan({ plan, courses, onCourseMove, onAddPreviousS
           />
         );
       })}
+      <button 
+        onClick={onAddNextSemester}
+        style={{
+          padding: '10px 15px',
+          background: '#2196f3',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          minWidth: '150px',
+          height: 'fit-content',
+          marginTop: '45px'
+        }}
+      >
+        + Add Next Semester
+      </button>
     </div>
   );
 }

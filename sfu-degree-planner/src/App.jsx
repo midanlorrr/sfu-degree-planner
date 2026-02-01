@@ -27,7 +27,31 @@ export default function App() {
     setNotifications(logs);
     
     if (result.plan) {
-      setPlan(result.plan);
+      // Find the last semester with courses
+      const semestersInOrder = Object.keys(result.plan).sort((a, b) => {
+        const [yearA, termA] = a.split('-');
+        const [yearB, termB] = b.split('-');
+        if (yearA !== yearB) return yearA.localeCompare(yearB);
+        const termOrder = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
+        return termOrder[termA] - termOrder[termB];
+      });
+      
+      let lastNonEmptySemester = null;
+      for (let i = semestersInOrder.length - 1; i >= 0; i--) {
+        if (result.plan[semestersInOrder[i]].length > 0) {
+          lastNonEmptySemester = semestersInOrder[i];
+          break;
+        }
+      }
+      
+      // Keep only semesters up to and including the last non-empty one
+      const cleanedPlan = {};
+      for (const semester of semestersInOrder) {
+        cleanedPlan[semester] = result.plan[semester];
+        if (semester === lastNonEmptySemester) break;
+      }
+      
+      setPlan(cleanedPlan);
     }
   }
 
@@ -63,6 +87,38 @@ export default function App() {
     }));
   }
 
+  function addNextSemester() {
+    const semesters = Object.keys(plan).sort((a, b) => {
+      const [yearA, termA] = a.split('-');
+      const [yearB, termB] = b.split('-');
+      if (yearA !== yearB) return yearA.localeCompare(yearB);
+      const termOrder = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
+      return termOrder[termA] - termOrder[termB];
+    });
+
+    const lastSemester = semesters[semesters.length - 1];
+    const [year, term] = lastSemester.split('-');
+    
+    let newYear, newTerm;
+    if (term === 'Spring') {
+      newYear = year;
+      newTerm = 'Summer';
+    } else if (term === 'Summer') {
+      newYear = year;
+      newTerm = 'Fall';
+    } else { // Fall
+      newYear = parseInt(year) + 1;
+      newTerm = 'Spring';
+    }
+
+    const newSemesterKey = `${newYear}-${newTerm}`;
+    
+    setPlan(prevPlan => ({
+      ...prevPlan,
+      [newSemesterKey]: []
+    }));
+  }
+
   return (
     <div style={{ color: 'black' }}>
       <h1>MSE Degree Planner</h1>
@@ -74,6 +130,7 @@ export default function App() {
             courses={courses} 
             onCourseMove={handleCourseMove}
             onAddPreviousSemester={addPreviousSemester}
+            onAddNextSemester={addNextSemester}
           />
           
           {notifications.length > 0 && (
