@@ -1,7 +1,8 @@
+// App.jsx
 import { useEffect, useState } from "react";
 import { fetchDegreeCourses } from "./api/fetchCourses";
 import { transformCourseData } from "./api/courseDataTransformer";
-import { DEFAULT_PLAN } from "./data/defaultPlan"; // wherever you saved it
+import { DEFAULT_PLAN } from "./data/defaultPlan";
 import DegreePlan from "./components/DegreePlan";
 
 export default function App() {
@@ -15,11 +16,25 @@ export default function App() {
     });
   }, []);
 
+  function handleCourseMove(courseId, sourceSemester, targetSemester) {
+    setPlan(prevPlan => {
+      const newPlan = { ...prevPlan };
+      
+      // Remove from source
+      newPlan[sourceSemester] = newPlan[sourceSemester].filter(id => id !== courseId);
+      
+      // Add to target
+      newPlan[targetSemester] = [...newPlan[targetSemester], courseId];
+      
+      return newPlan;
+    });
+  }
+
   return (
     <div>
       <h1>MSE Degree Planner</h1>
       {courses.length > 0 ? (
-        <DegreePlan plan={plan} courses={courses} />
+        <DegreePlan plan={plan} courses={courses} onCourseMove={handleCourseMove} />
       ) : (
         <p>Loading courses...</p>
       )}
