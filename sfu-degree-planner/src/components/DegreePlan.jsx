@@ -1,54 +1,115 @@
+// components/DegreePlan.jsx
 import { useState } from 'react';
-
-const fadeIn = `
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`;
 
 function getBaseCourseId(courseId) {
   return courseId.replace(/-retake$/, "").replace(/-\d+$/, "");
 }
 
-function CourseBlock({ course, isDragging }) {
-  const [isHovered, setIsHovered] = useState(false);
-  
+function CourseBlock({ course, courseId, isDragging, isOverridden, onOverride, isFailed, isRetake, onMarkAsFailed, semesterKey }) {
   const getBackgroundColor = () => {
+    if (isFailed) return '#ffcdd2'; // Red for failed
+    if (isRetake) return '#fff9c4'; // Yellow for retake
     if (course.type === 'coop') return '#e3f2fd';
     if (course.type === 'elective') return '#fff3e0';
-    if (course.type === 'technical-elective') return '#f3e5f5';
-    return '#f0f0f0';
+    if (course.type === 'technical-elective') return '#ead3ee';
+    return '#ecdee8';
   };
 
+  const getCourseUrl = () => {
+    if (course.type === 'coop' || course.type === 'elective' || course.type === 'technical-elective') {
+      return null;
+    }
+    const [dept, number] = course.id.split(' ');
+    return `https://www.sfu.ca/students/calendar/2026/spring/courses/${dept.toLowerCase()}/${number}.html`;
+  };
+
+  const courseUrl = getCourseUrl();
+
   return (
-    <div 
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{ 
-        padding: '12px', 
-        margin: '8px 0', 
-        background: getBackgroundColor(),
-        borderRadius: '8px',
-        cursor: 'grab',
-        opacity: isDragging ? 0.5 : 1,
-        color: '#333',
-        boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.15)' : '0 2px 4px rgba(0,0,0,0.1)',
-        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'all 0.2s ease'
-      }}
-    >
-      <strong style={{ color: '#333' }}>{course.id}</strong>
-      <div style={{ fontSize: '12px', color: '#666' }}>{course.name}</div>
-      {course.credits > 0 && (
-        <div style={{ fontSize: '11px', color: '#999' }}>{course.credits} credits</div>
-      )}
+    <div style={{ 
+      padding: '10px', 
+      margin: '8px 0', 
+      background: getBackgroundColor(),
+      borderRadius: '8px',
+      cursor: 'grab',
+      opacity: isDragging ? 0.5 : 1,
+      color: '#333',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      border: isOverridden ? '2px solid #ff9800' : isFailed ? '2px solid #f44336' : 'none',
+      position: 'relative'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+        <div style={{ flex: 1 }}>
+          {courseUrl ? (
+            <a 
+              href={courseUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                color: '#667eea', 
+                textDecoration: 'none',
+                fontWeight: 'bold'
+              }}
+              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {course.id} {isRetake ? '(Retake)' : ''}
+            </a>
+          ) : (
+            <strong style={{ color: '#333' }}>{course.id} {isRetake ? '(Retake)' : ''}</strong>
+          )}
+          {isFailed && <span style={{ color: '#f44336', fontSize: '11px', fontWeight: 'bold' }}> FAILED</span>}
+          <div style={{ fontSize: '12px', color: '#666' }}>{course.name}</div>
+          {course.credits > 0 && (
+            <div style={{ fontSize: '11px', color: '#999' }}>{course.credits} credits</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {!isFailed && !isRetake && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkAsFailed(courseId, semesterKey);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                padding: '2px 6px',
+                fontSize: '10px',
+                background: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+              title="Mark as failed and schedule retake"
+            >
+              ❌
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOverride();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              padding: '2px 6px',
+              fontSize: '10px',
+              background: isOverridden ? '#ff9800' : '#e0e0e0',
+              color: isOverridden ? 'white' : '#666',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+            title={isOverridden ? 'Override active - ignoring validation' : 'Force course here (ignore validation)'}
+          >
+            {isOverridden ? '⚠️' : '🔓'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -106,14 +167,10 @@ function DroppableSemester({ semesterKey, term, year, courseIds, courses, onDrop
         background: isOver ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.9)',
         borderRadius: '12px',
         flex: '0 0 auto',
-        boxShadow: isOver ? '0 8px 24px rgba(102, 126, 234, 0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
-        backdropFilter: 'blur(10px)',
-        transform: isOver ? 'scale(1.02)' : 'scale(1)',
-        transition: 'all 0.3s ease',
-        animation: 'fadeIn 0.4s ease-out'
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        backdropFilter: 'blur(10px)'
       }}
     >
-      <style>{fadeIn}</style>
       <h3 style={{ margin: '0 0 16px 0', color: '#667eea', fontSize: '18px', fontWeight: '600' }}>{term} {year}</h3>
       {courseIds.map((courseId, idx) => {
         const baseCourseId = getBaseCourseId(courseId);

@@ -247,21 +247,8 @@ export default function App() {
               borderRadius: '12px',
               boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
               maxHeight: '200px',
-              overflowY: 'auto',
-              animation: 'slideUp 0.3s ease-out'
+              overflowY: 'auto'
             }}>
-              <style>{`
-                @keyframes slideUp {
-                  from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                  }
-                  to {
-                    opacity: 1;
-                    transform: translateY(0);
-                  }
-                }
-              `}</style>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <strong style={{ fontSize: '16px' }}>Move Log</strong>
                 <button onClick={() => setNotifications([])} style={{ 
